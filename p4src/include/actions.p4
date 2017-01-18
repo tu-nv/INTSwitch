@@ -293,7 +293,8 @@ action int_set_header_7_bos() {
 
 table tb_int_bos {
     reads {
-        int_header.total_hop_cnt            : ternary;
+        // use table apply condition at source instead
+        // int_header.total_hop_cnt            : ternary;
         int_header.instruction_mask_0003    : ternary;
         int_header.instruction_mask_0407    : ternary;
         // two below are reserved for now
@@ -317,6 +318,7 @@ table tb_int_bos {
 
 action int_update_total_hop_cnt() {
     add_to_field(int_header.total_hop_cnt, 1);
+    add_to_field(int_header.int_len, int_metadata.insert_byte_cnt);
 }
 
 table tb_int_meta_header_update {
@@ -327,11 +329,11 @@ table tb_int_meta_header_update {
 }
 
 action int_transit(switch_id) {
-    subtract(int_metadata.insert_cnt, int_header.max_hop_cnt,
-                                            int_header.total_hop_cnt);
+    // subtract(int_metadata.insert_cnt, int_header.max_hop_cnt,
+    //                                         int_header.total_hop_cnt);
     modify_field(int_metadata.switch_id, switch_id);
-    // shift_left(int_metadata.insert_byte_cnt, int_metadata.instruction_cnt, 2);
-    shift_left(int_metadata.insert_byte_cnt, 8, 2); // temporary
+    shift_left(int_metadata.insert_byte_cnt, int_header.ins_cnt, 2);
+    // shift_left(int_metadata.insert_byte_cnt, 8, 2); // temporary
 }
 
 table tb_int_insert {
@@ -342,16 +344,19 @@ table tb_int_insert {
 }
 
 control process_int_transit {
-	// if (udp.dstPort == UDP_INT_PORT) {
-		// if (standard_metadata.instance_type != 2) {
+    // if (udp.dstPort == UDP_INT_PORT) {
+        // if (standard_metadata.instance_type != 2) {
             if (i2e.sink == 0) {
-    	    	apply(tb_int_insert);
+                apply(tb_int_insert);
                 apply(tb_int_inst_0003);
                 apply(tb_int_inst_0407);
-                apply(tb_int_bos);
+                if (i2e.source == 1) {
+                    // only apply at source
+                    apply(tb_int_bos);
+                }
                 apply(tb_int_meta_header_update);
             }
-	    // }	
+        // }    
     // }
 }
 
@@ -380,48 +385,44 @@ control process_int_outer_encap {
 }
 //-----------------------------------Mirror------------------------------------
 
-action int_truncate() {
+action int_to_onos() {
     // truncate(trunc_length);
-    truncate(146);
-    /*
-    should only do add, substract... of a field one time in ingress or egress
-    */
-    // subtract_from_field(udp.udpLen, 40);
-    // subtract_from_field(ipv4.ipv4Len, 40);
+    // truncate(0xFFFF);
+    modify_field(int_header.o, 1);
 }
-table tb_int_truncate {
+
+// action set_o_bit() {
+// }
+table tb_int_to_onos {
     reads {
-        // i2e.mirror_session_id: exact;
         standard_metadata.instance_type: exact;
+        // i2e.mirror_id: exact;
+        // use int_len to decide how much to truncated
+        // int_header.int_len: exact;
     }
     actions {
-        int_truncate;
+        int_to_onos; // id=CPU_MIRROR_SESSION_ID & instance_type=1 
+        // set_o_bit;
     }
     // size: 1;
 }
-control process_int_truncate {
+control process_int_to_onos {
     // cloned pkt
     // if (standard_metadata.instance_type == 1) {
-        apply(tb_int_truncate);
+    if (valid(int_header)) {
+        apply(tb_int_to_onos);
+    }
     // }
 }
 
 #define CPU_MIRROR_SESSION_ID 250
 field_list copy_to_cpu_fields {
-    // standard_metadata; // copy this cause error???
-    // i2e.sink;
-    /*
-    When egress control flow function starts to process the cloned copy, 
-    the metadata fields, specified in the field_list will be initialized to the 
-    same values as they would have at the moment the original packet reaches the 
-    end of the ingress control flow function
-    */
-    i2e.source;
-    // i2e.mirror_session_id;
+    i2e.mirror_id;
+    // i2e.source;
 }
 
 action mirror_int_to_cpu() {
-    // modify_field(i2e.mirror_session_id, CPU_MIRROR_SESSION_ID);
+    // modify_field(i2e.mirror_id, CPU_MIRROR_SESSION_ID);
     clone_ingress_pkt_to_egress(CPU_MIRROR_SESSION_ID, copy_to_cpu_fields);
 }
 
@@ -451,9 +452,9 @@ action int_set_source () {
     modify_field(i2e.source, 1);
 }
 
-action int_clear_source () {
-    modify_field(i2e.source, 0);
-}
+// action int_clear_source () {
+//     modify_field(i2e.source, 0);
+// }
 
 action int_set_sink () {
     // set sink
@@ -461,9 +462,9 @@ action int_set_sink () {
     
 }
 
-action int_clear_sink () {
-    modify_field(i2e.sink, 0);
-}
+// action int_clear_sink () {
+//     modify_field(i2e.sink, 0);
+// }
 
 table tb_set_source_sink {
     actions {
@@ -478,18 +479,22 @@ control process_set_source_sink {
 
 //-----------------------------Process int source------------------------------
 control process_int_source {
-    if (not valid(int_header)) {
-        if (i2e.sink == 0) {
-            if (i2e.source == 1) {
+    // if (not valid(int_header)) {
+        // if (i2e.sink == 0) {
+        //     if (i2e.source == 1) {
                 apply(tb_int_source);
-            }
-        }
-    } 
+        //     }
+        // }
+    // } 
 }
 
 table tb_int_source {
+    reads {
+        i2e.sink: exact;
+        i2e.source: exact;
+    }
     actions {
-        int_source;
+        int_source; // sink = 0 & source = 1
     }
     // size: 1;
 }
@@ -499,8 +504,8 @@ action int_source(max_hop, ins_cnt, ins_mask0003, ins_mask0407) {
     // modify_field(int_metadata.insert_byte_cnt, ins_byte_cnt);
 
     // add the header len (8 bytes) to total len
-    add_to_field(ipv4.ipv4Len, 8);
-    add_to_field(udp.udpLen, 8);
+    add_to_field(ipv4.ipv4Len, 12);
+    add_to_field(udp.udpLen, 12);
 
     add_header(int_header);
 
@@ -509,7 +514,6 @@ action int_source(max_hop, ins_cnt, ins_mask0003, ins_mask0407) {
     modify_field(int_header.c, 0);
     modify_field(int_header.e, 0);
     modify_field(int_header.o, 0);
-    modify_field(int_header.rsvd1, 0);
     modify_field(int_header.ins_cnt, ins_cnt);
     modify_field(int_header.max_hop_cnt, max_hop);
     modify_field(int_header.total_hop_cnt, 0);
@@ -517,11 +521,12 @@ action int_source(max_hop, ins_cnt, ins_mask0003, ins_mask0407) {
     modify_field(int_header.instruction_mask_0407, ins_mask0407);
     modify_field(int_header.instruction_mask_0811, 0); // not supported
     modify_field(int_header.instruction_mask_1215, 0); // not supported
-    
+    modify_field(int_header.rsvd1, 0);
+    modify_field(int_header.rsvd2, 0);
+
+    modify_field(int_header.int_len, 12); //starting value as int header len //3
     modify_field(int_header.original_port, udp.dstPort);
     modify_field(udp.dstPort, UDP_INT_PORT);
-
-    modify_field(i2e.source, 1); // we set it before, but still need it (if not, error???)
 }
 
 //------------------------------Process int sink-------------------------------
@@ -555,15 +560,15 @@ action int_sink() {
     remove_header(int_val[21]);
     remove_header(int_val[22]);
     remove_header(int_val[23]);
-    // update len
-    subtract_from_field(ipv4.ipv4Len, 72); // 8fields * 4bytes * 2switches + 8
-    subtract_from_field(udp.udpLen, 72);
+    // remove int header
+    subtract_from_field(ipv4.ipv4Len, int_header.int_len); 
+    subtract_from_field(udp.udpLen, int_header.int_len);
 }
 
 table tb_int_sink {
-    // reads {
-
-    // }
+    reads {
+        i2e.sink: exact;
+    }
     actions {
         int_sink;
     }
@@ -571,9 +576,7 @@ table tb_int_sink {
 }
 
 control process_int_sink {
-    if (i2e.sink == 1) {
-        apply (tb_int_sink);
-    }
+    apply (tb_int_sink);
 }
 //----------------------------restore original port----------------------------
 action restore_port () {

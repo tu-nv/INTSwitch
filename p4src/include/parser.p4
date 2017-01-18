@@ -67,7 +67,8 @@ metadata int_metadata_t int_metadata;
 
 parser parse_int_header {
     extract (int_header);
-    set_metadata(int_metadata.instruction_cnt, latest.ins_cnt);
+    // set_metadata(int_metadata.instruction_cnt, latest.ins_cnt);
+    // set_metadata(i2e.int_len, latest.int_len);
     return select (latest.rsvd1, latest.total_hop_cnt) {
         // reserved bits = 0 and total_hop_cnt == 0
         // no int_values are added by upstream
@@ -77,10 +78,10 @@ parser parse_int_header {
         //// new header is put on top of other by default (see add_header
         // in specification)
         0x000 mask 0xf00: parse_int_val;
-        //// 0 mask 0: always true ?
+        //// 0 mask 0: always true
         0 mask 0: ingress;
-        // never transition to the following state
-        default: parse_all_int_meta_value_headers;
+        // never transition to the following state (1 mask 0 always false)
+        1 mask 0: parse_all_int_meta_value_headers;
     }
 }
 

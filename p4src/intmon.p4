@@ -39,5 +39,5 @@ control egress {
             }
         }  
     } 
-                        process_int_truncate();
+                process_int_to_onos();
 }

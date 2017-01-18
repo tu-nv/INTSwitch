@@ -84,6 +84,8 @@ header_type int_header_t {
         instruction_mask_0407   : 4;
         instruction_mask_0811   : 4;
         instruction_mask_1215   : 4;
+        rsvd2                   : 16;
+        int_len                 : 16;
         original_port           : 16; // use rsvd2 to store original src/des port of udp/tcp
         // rsvd2                   : 16;
     }
@@ -92,9 +94,9 @@ header_type int_header_t {
 header_type int_metadata_t {
     fields {
         switch_id           : 32;
-        insert_cnt          : 8;
+        // insert_cnt          : 8;
         insert_byte_cnt     : 16;
-        instruction_cnt     : 16;
+        // instruction_cnt     : 16;
     }
 }
 
@@ -162,7 +164,7 @@ header_type int_metadata_i2e_t {
         source: 1;
         sink: 1;
         origin_port: 16;
-        mirror_session_id: 8;
+        mirror_id: 8;
     }
 }
 
