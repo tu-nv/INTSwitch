@@ -75,15 +75,17 @@ header_type int_header_t {
         rep                     : 2;
         c                       : 1;
         e                       : 1;
-        rsvd1                   : 5;
+        o                       : 1; // sent to onos
+        rsvd1                   : 4; // rsvd1 reduced from 5 to 4 bits
         ins_cnt                 : 5;
         max_hop_cnt             : 8;
         total_hop_cnt           : 8;
-        instruction_mask_0003   : 4;   // split the bits for lookup
+        instruction_mask_0003   : 4; // split the bits for lookup
         instruction_mask_0407   : 4;
         instruction_mask_0811   : 4;
         instruction_mask_1215   : 4;
-        rsvd2                   : 16;
+        original_port           : 16; // use rsvd2 to store original src/des port of udp/tcp
+        // rsvd2                   : 16;
     }
 }
 
@@ -147,3 +149,20 @@ header_type int_egress_port_tx_utilization_header_t {
         egress_port_tx_utilization  : 31;
     }
 }
+// generic int value (info) header for extraction
+header_type int_value_t {
+    fields {
+        bos         : 1;
+        val         : 31;
+    }
+}
+
+header_type int_metadata_i2e_t {
+    fields {
+        source: 1;
+        sink: 1;
+        origin_port: 16;
+        mirror_session_id: 8;
+    }
+}
+

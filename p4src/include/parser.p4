@@ -39,14 +39,16 @@ parser parse_tcp {
     return ingress;
 }
 
+// #define UDP_INT_PORT 54321
+
 header udp_t udp;
 
 parser parse_udp {
     extract(udp);
-    return select(udp.udpLen) {
-        // bogus state.. just extract all possible int headers in the
-        // correct order for deparser >"<
-        0x0001: parse_all_int_meta_value_headers;
+    // return select(udp.udpLen) {
+    return select(latest.dstPort) {
+        UDP_INT_PORT: parse_int_header;
+        
         default: ingress;
     }
 }
@@ -62,6 +64,36 @@ header int_q_congestion_header_t                int_q_congestion_header;
 header int_egress_port_tx_utilization_header_t  int_egress_port_tx_utilization_header;
 
 metadata int_metadata_t int_metadata;
+
+parser parse_int_header {
+    extract (int_header);
+    set_metadata(int_metadata.instruction_cnt, latest.ins_cnt);
+    return select (latest.rsvd1, latest.total_hop_cnt) {
+        // reserved bits = 0 and total_hop_cnt == 0
+        // no int_values are added by upstream
+        0x000: ingress;
+        // parse INT val headers added by upstream devices (total_hop_cnt != 0)
+        // reserved bits must be 0
+        //// new header is put on top of other by default (see add_header
+        // in specification)
+        0x000 mask 0xf00: parse_int_val;
+        //// 0 mask 0: always true ?
+        0 mask 0: ingress;
+        // never transition to the following state
+        default: parse_all_int_meta_value_headers;
+    }
+}
+
+#define MAX_INT_INFO 24
+header int_value_t int_val[MAX_INT_INFO];
+
+parser parse_int_val {
+    extract(int_val[next]);
+    return select(latest.bos) {
+        0 : parse_int_val;
+        1 : ingress;
+    }
+}
 
 parser parse_all_int_meta_value_headers {
     // bogus state.. just extract all possible int headers in the

@@ -2,3 +2,4 @@
 #define MAX_PORTS 254
 #define CPU_PORT 255
 #define DROP_PORT 511
+#define UDP_INT_PORT 54321

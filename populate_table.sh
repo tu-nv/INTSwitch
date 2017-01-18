@@ -28,24 +28,37 @@ sscli () {
     tport=$(head -n 1 /tmp/bmv2-$1-thrift-port)
     sudo $BMV2_PATH/targets/simple_switch/sswitch_CLI --thrift-port $tport
 }
+echo "table_set_default tb_set_source_sink int_set_source" | p4cli 2
+echo "table_set_default tb_int_bos int_set_header_7_bos" | p4cli 2
+echo "table_set_default tb_int_inst_0003 int_set_header_0003_i15" | p4cli 2
+echo "table_set_default tb_int_inst_0407 int_set_header_0407_i15" | p4cli 2
+echo "table_set_default tb_int_meta_header_update int_update_total_hop_cnt" | p4cli 2
+echo "table_set_default tb_int_outer_encap int_update_udp" | p4cli 2
+echo "table_set_default tb_int_insert int_transit 2" | p4cli 2
+echo "table_set_default tb_int_source int_source 7 7 15 15" | p4cli 2
 
-echo "table_set_default int_bos int_set_header_7_bos" | p4cli 1
-echo "table_set_default int_inst_0003 int_set_header_0003_i15" | p4cli 1
-echo "table_set_default int_inst_0407 int_set_header_0407_i15" | p4cli 1
-echo "table_set_default int_meta_header_update int_update_total_hop_cnt" | p4cli 1
-echo "table_set_default int_outer_encap int_update_udp" | p4cli 1
-echo "table_set_default int_insert int_transit 1" | p4cli 1
-echo "table_set_default int_bos int_set_header_7_bos" | p4cli 2
-echo "table_set_default int_inst_0003 int_set_header_0003_i15" | p4cli 2
-echo "table_set_default int_inst_0407 int_set_header_0407_i15" | p4cli 2
-echo "table_set_default int_meta_header_update int_update_total_hop_cnt" | p4cli 2
-echo "table_set_default int_outer_encap int_update_udp" | p4cli 2
-echo "table_set_default int_insert int_transit 2" | p4cli 2
-echo "table_set_default int_bos int_set_header_7_bos" | p4cli 3
-echo "table_set_default int_inst_0003 int_set_header_0003_i15" | p4cli 3
-echo "table_set_default int_inst_0407 int_set_header_0407_i15" | p4cli 3
-echo "table_set_default int_meta_header_update int_update_total_hop_cnt" | p4cli 3
-echo "table_set_defaulttable_set_default int_outer_encap int_update_udp" | p4cli 3
-echo "table_set_default int_insert int_transit 3" | p4cli 3
-echo "table_add copy_to_cpu_tb do_copy_to_cpu 0 =>" | p4cli 3
+# echo "table_set_default tb_int_bos int_set_header_7_bos" | p4cli 1
+echo "table_set_default tb_int_inst_0003 int_set_header_0003_i15" | p4cli 1
+echo "table_set_default tb_int_inst_0407 int_set_header_0407_i15" | p4cli 1
+echo "table_set_default tb_int_meta_header_update int_update_total_hop_cnt" | p4cli 1
+echo "table_set_default tb_int_outer_encap int_update_udp" | p4cli 1
+echo "table_set_default tb_int_insert int_transit 1" | p4cli 1
+echo "table_set_default tb_int_source int_source 7 7 15 15" | p4cli 1
+
+
+# echo "table_set_default tb_int_bos int_set_header_7_bos" | p4cli 3
+echo "table_set_default tb_int_inst_0003 int_set_header_0003_i15" | p4cli 3
+echo "table_set_default tb_int_inst_0407 int_set_header_0407_i15" | p4cli 3
+echo "table_set_default tb_int_meta_header_update int_update_total_hop_cnt" | p4cli 3
+echo "table_set_default tb_int_outer_encap int_update_udp" | p4cli 3
+echo "table_set_default tb_int_insert int_transit 3" | p4cli 3
+echo "table_set_default tb_int_source int_source 7 7 15 15" | p4cli 3
+echo "table_add tb_int_truncate int_truncate 1 =>" | p4cli 3
+
+# echo "table_set_default mirror_execute do_mirror_execute" | p4cli 3
+echo "table_set_default tb_set_source_sink int_set_sink" | p4cli 3
+echo "table_set_default tb_int_sink int_sink" | p4cli 3
+echo "table_set_default tb_restore_port restore_port" | p4cli 3
+# echo "table_set_default tb_int_truncate int_truncate" | p4cli 3
+echo "table_set_default tb_mirror_int_to_cpu mirror_int_to_cpu" | p4cli 3
 echo "mirroring_add 250 255" | sscli 3
