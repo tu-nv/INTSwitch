@@ -1,0 +1,85 @@
+Index: protocols/bmv2/api/src/main/java/org/onosproject/bmv2/api/runtime/Bmv2ExtensionTreatment.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- protocols/bmv2/api/src/main/java/org/onosproject/bmv2/api/runtime/Bmv2ExtensionTreatment.java	(revision c3a904f9fcc54849a450756a8d30475deed4c9bf)
++++ protocols/bmv2/api/src/main/java/org/onosproject/bmv2/api/runtime/Bmv2ExtensionTreatment.java	(revision ffcb92095445da09c143062637f3301ea9a4e93f)
+@@ -33,6 +33,7 @@
+ 
+ import java.nio.ByteBuffer;
+ import java.util.ArrayList;
++import java.util.Arrays;
+ import java.util.Collections;
+ import java.util.List;
+ import java.util.Map;
+@@ -252,6 +253,9 @@
+             List<ImmutableByteSequence> newParameters = new ArrayList<>(parameters.size());
+             List<String> parameterNames = new ArrayList<>(parameters.size());
+ 
++            ImmutableByteSequence[] newParametersArr = new ImmutableByteSequence[parameters.size()];
++            String[] parameterNamesArr = new String[parameters.size()];
++
+             for (String parameterName : parameters.keySet()) {
+                 Bmv2RuntimeDataModel runtimeData = actionModel.runtimeData(parameterName);
+                 checkNotNull(runtimeData, "no such an action parameter in configuration",
+@@ -260,17 +264,24 @@
+                 try {
+                     ImmutableByteSequence newSequence = fitByteSequence(parameters.get(parameterName), bitWidth);
+                     int idx = actionModel.runtimeDatas().indexOf(runtimeData);
+-                    newParameters.add(idx, newSequence);
+-                    parameterNames.add(idx, parameterName);
++
++//                    newParameters.add(idx, newSequence);
++//                    parameterNames.add(idx, parameterName);
++
++                    newParametersArr[idx] = newSequence;
++                    parameterNamesArr[idx] = parameterName;
++
+                 } catch (Bmv2TranslatorUtils.ByteSequenceFitException e) {
+                     throw new IllegalArgumentException(e.getMessage() +
+                                                                " [" + actionName + "->" + runtimeData.name() + "]");
+                 }
+             }
+ 
++            newParameters = Arrays.asList(newParametersArr);
++            parameterNames = Arrays.asList(parameterNamesArr);
++
+             return new Bmv2ExtensionTreatment(new Bmv2Action(actionName, newParameters), parameterNames);
+         }
+-
+ 
+ 
+         private static ByteBuffer bb(Object value) {
+Index: protocols/bmv2/ctl/src/main/java/org/onosproject/bmv2/ctl/Bmv2DeviceThriftClient.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- protocols/bmv2/ctl/src/main/java/org/onosproject/bmv2/ctl/Bmv2DeviceThriftClient.java	(revision c3a904f9fcc54849a450756a8d30475deed4c9bf)
++++ protocols/bmv2/ctl/src/main/java/org/onosproject/bmv2/ctl/Bmv2DeviceThriftClient.java	(revision ffcb92095445da09c143062637f3301ea9a4e93f)
+@@ -483,4 +483,24 @@
+         action.parameters().forEach(p -> buffers.add(ByteBuffer.wrap(p.asArray())));
+         return buffers;
+     }
++
++    /**
++     * tunv: add function for mirroring pkt with simple switch.
++     */
++
++    public void addMirrorId(int mirrorId, int egressPort) {
++        try {
++            simpleSwitchClient.mirroring_mapping_add(mirrorId, egressPort);
++        } catch (org.apache.thrift.TException e) {
++            log.warn("-----------error add mirror id");
++        }
++    }
++
++    public void removeMirrorId(int mirrorId) {
++        try {
++            simpleSwitchClient.mirroring_mapping_delete(mirrorId);
++        } catch (org.apache.thrift.TException e) {
++            log.warn("-----------error remove mirror id");
++        }
++    }
+ }
