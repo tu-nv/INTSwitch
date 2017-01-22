@@ -165,6 +165,7 @@ header_type int_metadata_i2e_t {
         sink: 1;
         origin_port: 16;
         mirror_id: 8;
+        // dump: 6;
     }
 }
 

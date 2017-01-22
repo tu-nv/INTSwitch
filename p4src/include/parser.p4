@@ -79,7 +79,7 @@ parser parse_int_header {
         // in specification)
         0x000 mask 0xf00: parse_int_val;
         //// 0 mask 0: always true
-        0 mask 0: ingress;
+        // 0 mask 0: ingress;
         // never transition to the following state (1 mask 0 always false)
         1 mask 0: parse_all_int_meta_value_headers;
     }
@@ -92,7 +92,7 @@ parser parse_int_val {
     extract(int_val[next]);
     return select(latest.bos) {
         0 : parse_int_val;
-        1 : ingress;
+        default : ingress;
     }
 }
 

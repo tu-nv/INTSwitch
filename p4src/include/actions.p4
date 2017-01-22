@@ -322,8 +322,11 @@ action int_update_total_hop_cnt() {
 }
 
 table tb_int_meta_header_update {
+    reads {
+        i2e.sink: exact;
+    }
     actions {
-        int_update_total_hop_cnt;
+        int_update_total_hop_cnt; // sink = 0
     }
     // size: 1;
 }
@@ -337,6 +340,9 @@ action int_transit(switch_id) {
 }
 
 table tb_int_insert {
+    reads {
+        i2e.sink: exact;
+    }
     actions {
         int_transit;
     }
@@ -346,16 +352,16 @@ table tb_int_insert {
 control process_int_transit {
     // if (udp.dstPort == UDP_INT_PORT) {
         // if (standard_metadata.instance_type != 2) {
+            apply(tb_int_insert);
             if (i2e.sink == 0) {
-                apply(tb_int_insert);
                 apply(tb_int_inst_0003);
                 apply(tb_int_inst_0407);
                 if (i2e.source == 1) {
                     // only apply at source
                     apply(tb_int_bos);
                 }
-                apply(tb_int_meta_header_update);
             }
+            apply(tb_int_meta_header_update);
         // }    
     // }
 }
@@ -365,13 +371,11 @@ action int_update_udp() {
     add_to_field(udp.udpLen, int_metadata.insert_byte_cnt);
 }
 table tb_int_outer_encap {
-    // should read field, not header ?
-    // reads {
-    //     ipv4 : valid;
-    //     udp : valid;
-    // }
+    reads {
+        i2e.source: ternary;
+    }
     actions {
-        int_update_udp;
+        int_update_udp; // src both 0 and 1
     }
     // size: 1;
 }
@@ -383,6 +387,60 @@ control process_int_outer_encap {
         // }
     // }
 }
+
+//---------------------------Set INT source or Sink----------------------------
+
+action int_set_source () {
+    modify_field(i2e.source, 1);
+}
+
+// action int_clear_source () {
+//     modify_field(i2e.source, 0);
+// }
+
+action int_set_sink () {
+    // set sink
+    modify_field(i2e.sink, 1);
+    
+}
+
+
+// action int_clear_sink () {
+//     modify_field(i2e.sink, 0);
+// }
+
+table tb_set_source {
+    reads {
+        ipv4.srcAddr: exact;
+        ipv4.dstAddr: ternary;
+        udp.srcPort: ternary;
+        udp.dstPort: ternary;
+    }
+    actions {
+        int_set_source;
+        nop;
+    }
+}
+
+table tb_set_sink {
+    reads {
+        ipv4.dstAddr: exact;
+        ipv4.srcAddr: ternary;
+        udp.srcPort: ternary;
+        udp.dstPort: ternary;
+    }
+    actions {
+        int_set_sink;
+        nop;
+    }
+}
+control process_set_source_sink {
+    if (valid (udp)) {
+        apply(tb_set_source);
+        apply(tb_set_sink);
+    }
+}
+
 //-----------------------------------Mirror------------------------------------
 
 action int_to_onos() {
@@ -427,6 +485,9 @@ action mirror_int_to_cpu() {
 }
 
 table tb_mirror_int_to_cpu {
+    reads {
+        ipv4.dstAddr: exact;
+    }
     actions {
         mirror_int_to_cpu;
     }
@@ -434,49 +495,23 @@ table tb_mirror_int_to_cpu {
 }
 
 control process_mirror_to_cpu {
-    if (standard_metadata.ingress_port != CPU_PORT) {
-        if (ethernet.etherType == ETHERTYPE_IPV4) {
-            if (ipv4.protocol == IP_PROTOCOLS_UDP) {
-                if(udp.dstPort == UDP_INT_PORT) {
-                    // if (valid (int_header)) { // error also?
-                        apply(tb_mirror_int_to_cpu);
-                    // }
-                }
-            }
-        }
-    }
-}
-//---------------------------Set INT source or Sink----------------------------
-
-action int_set_source () {
-    modify_field(i2e.source, 1);
-}
-
-// action int_clear_source () {
-//     modify_field(i2e.source, 0);
-// }
-
-action int_set_sink () {
-    // set sink
-    modify_field(i2e.sink, 1);
     
-}
+    // if (standard_metadata.ingress_port != CPU_PORT) {
+    //     if (ethernet.etherType == ETHERTYPE_IPV4) {
+    //         if (ipv4.protocol == IP_PROTOCOLS_UDP) {
+    //             if(udp.dstPort == UDP_INT_PORT) {
+    //                 // if (valid (int_header)) { // error also?
+    //                     apply(tb_mirror_int_to_cpu);
+    //                 // }
+    //             }
+    //         }
+    //     }
+    // }
 
-// action int_clear_sink () {
-//     modify_field(i2e.sink, 0);
-// }
-
-table tb_set_source_sink {
-    actions {
-        int_set_source;
-        int_set_sink;
-        nop;
+    if (valid (int_header)){
+        apply(tb_mirror_int_to_cpu);
     }
 }
-control process_set_source_sink {
-    apply(tb_set_source_sink);
-}
-
 //-----------------------------Process int source------------------------------
 control process_int_source {
     // if (not valid(int_header)) {
@@ -570,7 +605,7 @@ table tb_int_sink {
         i2e.sink: exact;
     }
     actions {
-        int_sink;
+        int_sink; // sink = 1
     }
     // size: 1;
 }
@@ -584,13 +619,16 @@ action restore_port () {
 }
 
 table tb_restore_port {
+    reads {
+        i2e.sink: exact;
+    }
     actions {
-        restore_port;
+        restore_port; // sink = 1
     }
 }
 
 control process_restore_port {
-    if (i2e.sink == 1) {
+    // if (i2e.sink == 1) {
         apply (tb_restore_port);
-    }
+    // }
 }
