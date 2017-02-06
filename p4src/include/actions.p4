@@ -1,5 +1,5 @@
 metadata int_metadata_i2e_t i2e;
-
+metadata int_metadata_t int_metadata;
 
 action set_egress_port(port) {
     modify_field(standard_metadata.egress_spec, port);
@@ -56,7 +56,7 @@ action int_set_header_2() { //hop_latency
 action int_set_header_3() { //q_occupancy
     add_header(int_q_occupancy_header);
     modify_field(int_q_occupancy_header.q_occupancy1, 0);
-    modify_field(int_q_occupancy_header.q_occupancy0, queueing_metadata.enq_qdepth);
+    modify_field(int_q_occupancy_header.q_occupancy0, queueing_metadata.deq_qdepth);
 }
 action int_set_header_4() { //ingress_tstamp
     add_header(int_ingress_tstamp_header);
@@ -71,11 +71,13 @@ action int_set_header_5() { //egress_port_id
 
 action int_set_header_6() { //q_congestion
     add_header(int_q_congestion_header);
-    modify_field(int_q_congestion_header.q_congestion, 0x7FFFFFFF);
+    // modify_field(int_q_congestion_header.q_congestion, 0x7FFFFFFF);
+    modify_field(int_q_congestion_header.q_congestion, queueing_metadata.deq_qcongestion);
 }
 action int_set_header_7() { //egress_port_tx_utilization
     add_header(int_egress_port_tx_utilization_header);
-    modify_field(int_egress_port_tx_utilization_header.egress_port_tx_utilization, 0x7FFFFFFF);
+    // modify_field(int_egress_port_tx_utilization_header.egress_port_tx_utilization, 0x7FFFFFFF);
+    modify_field(int_egress_port_tx_utilization_header.egress_port_tx_utilization, queueing_metadata.tx_utilization);
 }
 
 /* action function for bits 0-3 combinations, 0 is msb, 3 is lsb */
@@ -168,8 +170,7 @@ table tb_int_inst_0003 {
         int_set_header_0003_i14;
         int_set_header_0003_i15;
     }
-
-    // size: 17;
+    max_size: 17;
 }
 
 /* action function for bits 4-7 combinations, 4 is msb, 7 is lsb */
@@ -262,7 +263,7 @@ table tb_int_inst_0407 {
         int_set_header_0407_i15;
     }
 
-    // size: 17;
+    max_size: 17;
 }
 
 /* BOS bit - set for the bottom most header added by INT src device */
@@ -310,9 +311,8 @@ table tb_int_bos {
         int_set_header_5_bos;
         int_set_header_6_bos;
         int_set_header_7_bos;
-        nop;
     }
-    // size : 17;
+    max_size: 9;
 }
 
 
@@ -328,7 +328,7 @@ table tb_int_meta_header_update {
     actions {
         int_update_total_hop_cnt; // sink = 0
     }
-    // size: 1;
+    max_size: 2;
 }
 
 action int_transit(switch_id) {
@@ -346,7 +346,7 @@ table tb_int_insert {
     actions {
         int_transit;
     }
-    // size: 1;
+    max_size: 2;
 }
 
 control process_int_transit {
@@ -377,7 +377,7 @@ table tb_int_outer_encap {
     actions {
         int_update_udp; // src both 0 and 1
     }
-    // size: 1;
+    max_size: 4;
 }
 
 control process_int_outer_encap {
@@ -387,10 +387,30 @@ control process_int_outer_encap {
         // }
     // }
 }
+//---------------detect if the sw is the first (possible source)---------------
+action int_set_first_sw() {
+    modify_field(i2e.first_sw, 1);
+}
 
+table tb_set_first_sw {
+    reads {
+        ipv4.srcAddr: exact;
+    }
+    actions {
+        int_set_first_sw;
+    }
+    max_size: 1024;
+}
+
+control process_set_first_sw {
+    // if (valid (udp)) {
+        apply(tb_set_first_sw);
+    // }
+}
 //---------------------------Set INT source or Sink----------------------------
 
 action int_set_source () {
+    // modify_field(i2e.flow_id, flow_id);
     modify_field(i2e.source, 1);
 }
 
@@ -411,28 +431,30 @@ action int_set_sink () {
 
 table tb_set_source {
     reads {
-        ipv4.srcAddr: exact;
+        i2e.first_sw: exact;
+        ipv4.srcAddr: ternary;
         ipv4.dstAddr: ternary;
         udp.srcPort: ternary;
         udp.dstPort: ternary;
     }
     actions {
         int_set_source;
-        nop;
     }
+
+    max_size: 1024;
 }
 
 table tb_set_sink {
     reads {
-        ipv4.dstAddr: exact;
+        ipv4.dstAddr: ternary;
         ipv4.srcAddr: ternary;
         udp.srcPort: ternary;
         udp.dstPort: ternary;
     }
     actions {
         int_set_sink;
-        nop;
     }
+    max_size: 1024;
 }
 control process_set_source_sink {
     if (valid (udp)) {
@@ -462,7 +484,7 @@ table tb_int_to_onos {
         int_to_onos; // id=CPU_MIRROR_SESSION_ID & instance_type=1 
         // set_o_bit;
     }
-    // size: 1;
+    max_size: 2;
 }
 control process_int_to_onos {
     // cloned pkt
@@ -491,7 +513,7 @@ table tb_mirror_int_to_cpu {
     actions {
         mirror_int_to_cpu;
     }
-    // size: 1;
+    max_size: 1024;
 }
 
 control process_mirror_to_cpu {
@@ -527,11 +549,15 @@ table tb_int_source {
     reads {
         i2e.sink: exact;
         i2e.source: exact;
+        ipv4.srcAddr: ternary;
+        ipv4.dstAddr: ternary;
+        udp.srcPort: ternary;
+        udp.dstPort: ternary;
     }
     actions {
         int_source; // sink = 0 & source = 1
     }
-    // size: 1;
+    max_size: 1024;
 }
 action int_source(max_hop, ins_cnt, ins_mask0003, ins_mask0407) {
     // modify_field(int_metadata.insert_cnt, max_hop);
@@ -607,7 +633,7 @@ table tb_int_sink {
     actions {
         int_sink; // sink = 1
     }
-    // size: 1;
+   max_size: 2;
 }
 
 control process_int_sink {
@@ -625,6 +651,7 @@ table tb_restore_port {
     actions {
         restore_port; // sink = 1
     }
+    max_size: 2;
 }
 
 control process_restore_port {

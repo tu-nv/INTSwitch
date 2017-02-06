@@ -15,6 +15,8 @@ header_type queueing_metadata_t {
         enq_qdepth : 16;
         deq_timedelta : 32;
         deq_qdepth : 16;
+        deq_qcongestion: 16;
+        tx_utilization: 32;
     }
 }
 
@@ -165,7 +167,8 @@ header_type int_metadata_i2e_t {
         sink: 1;
         origin_port: 16;
         mirror_id: 8;
-        // dump: 6;
+        first_sw: 1;
+        flow_id: 16;
     }
 }
 
