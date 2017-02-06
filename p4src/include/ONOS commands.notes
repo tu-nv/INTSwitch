@@ -1,0 +1,82 @@
+ONOS commands:
+	- 'command' --help: display the help
+	- app activate/deactivate 'application': active or deactivate an app
+	- links, hosts, flows, devices: checking various status 
+	- tl (onos log)
+Mininet commands:
+	- link 'a' 'b' up/down: making the link between a and b up or down
+	- intents : checking the intents
+
+
+Notes when build ONOS app:
+	- use onos-create-app instead of #mvn archetype...
+
+Enviromental variables:
+	- export JAVA_HOME=/usr/lib/jvm/java-8-oracle
+	- export ONOS_ROOT=~/onos
+	- source $ONOS_ROOT/tools/dev/bash_profile
+	- export ONOS_IP=10.0.2.15
+	- export ONOS_APPS=drivers,openflow,proxyarp,mobility,fwd
+	- export BMV2_PATH=~/onos-p4-dev/onos-bmv2
+	- export BMV2_EXE=~/onos-p4-dev/onos-bmv2/targets/simple_switch/simple_switch
+	- export BMV2_JSON=~/onos-p4-dev/p4src/build/default.json
+	- source ~/onos-p4-dev/tools/bash_profile
+	
+	- export BMV2_JSON=~/onos-p4-dev/p4src/build/empty.json
+ONOS mininet:
+	- sudo env ONOS_TAR=/tmp/onos-1.7.2.tu.tar.gz mn --custom onos.py --controller onos,1 --topo tree,2,2
+ONOS P4:
+	- sudo -E mn --custom $BMV2_PY --switch onosbmv2 --controller remote,ip=10.0.2.15,port=40123 --topo tree,2,2
+ONOS P4 Mininet run:
+	- cd ~/onos/tools/dev/mininet
+	- Set ONOS TAR
+	sudo env ONOS_TAR=/tmp/onos-1.7.2.tu.tar.gz BMV2_EXE=~/onos-p4-dev/onos-bmv2/targets/simple_switch/simple_switch BMV2_JSON=~/onos-p4-dev/p4src/build/empty.json mn --custom onos.py,bmv2.py --controller onos,1 --switch onosbmv2 --topo tree,2,2
+
+	- Remember to active BMv2:
+	onos> app activate org.onosproject.drivers.bmv2
+P4 CLI:
+	- echo "<command>" | p4cli <device_id>
+		example: echo "switch_info" | p4cli 1
+	- "table_set_default int_bos int_set_header_all_bos"
+	- Add entry to a match table: 
+		table_add <table name> <action name> <match fields> => <action parameters> [priority]
+		example: table_add int_outer_encap int_update_udp 1 1 =>  // 1: valid
+	- Display table dumping info:
+		table_dump <table>
+
+Command for current P4 INT:
+	- echo "table_set_default int_bos int_set_header_7_bos" | p4cli 1
+	- echo "table_set_default int_inst_0003 int_set_header_0003_i15" | p4cli 1
+	- echo "table_set_default int_inst_0407 int_set_header_0407_i15" | p4cli 1
+	- echo "table_set_default int_meta_header_update int_update_total_hop_cnt" | p4cli 1
+	- echo "table_add int_outer_encap int_update_udp 1 1 =>" | p4cli 1
+	- echo "table_set_default int_insert int_transit 1" | p4cli 1
+	- echo "table_set_default int_bos int_set_header_7_bos" | p4cli 2
+	- echo "table_set_default int_inst_0003 int_set_header_0003_i15" | p4cli 2
+	- echo "table_set_default int_inst_0407 int_set_header_0407_i15" | p4cli 2
+	- echo "table_set_default int_meta_header_update int_update_total_hop_cnt" | p4cli 2
+	- echo "table_add int_outer_encap int_update_udp 1 1 =>" | p4cli 2
+	- echo "table_set_default int_insert int_transit 2" | p4cli 2
+	- echo "table_set_default int_bos int_set_header_7_bos" | p4cli 3
+	- echo "table_set_default int_inst_0003 int_set_header_0003_i15" | p4cli 3
+	- echo "table_set_default int_inst_0407 int_set_header_0407_i15" | p4cli 3
+	- echo "table_set_default int_meta_header_update int_update_total_hop_cnt" | p4cli 3
+	- echo "table_add int_outer_encap int_update_udp 1 1 =>" | p4cli 3
+	- echo "table_set_default int_insert int_transit 3" | p4cli 3
+	- echo "table_add copy_to_cpu do_copy_to_cpu 0 =>" | p4cli 3
+	- echo "mirroring_add 250 255" | sscli 3
+
+iperf:
+	- h1 iperf -c h4 -b 10k -t 100 -l 40 -p 54321
+
+Build specific module Maven:
+	- pl, --projects
+	        Build specified reactor projects instead of all projects
+	- am, --also-make
+	        If project list is specified, also build projects required by the list
+	run:
+	- mvn install -pl B -am
+	- mvn install -pl bmv2 -am
+	- mvn install -pl packet -am
+
+	#And this will build B and the modules required by B.

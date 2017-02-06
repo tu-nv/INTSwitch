@@ -1,0 +1,124 @@
+Project Note:
+
+    Header format:
+        %|      0        |      1        |      2        |      3        |
+        % 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+        %+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        %|       Source Port             |             INT Port          |
+        %+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ UDP
+        %|        Length                 |         Checksum              |
+        %+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+-+-+-+
+        %|Ver|Rep|C|E|O|R R R R| Ins Cnt |  Max Hop Cnt  |  Total Hop Cnt|
+        %+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+ INT  
+        %|     Instruction Bitmap        |        reserved               |header
+        %+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+  
+        %|             Int len           |        Original Dest Port     |
+        %+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+-+-+-+
+        %|                         INT data Stack                        | INT 
+        %|                                                               | data
+        %+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+­+-+-+-+
+    
+    - Target is BMv2 Simple switch.
+    To add preprocessor, calculate link status and queue utilization, can modify simple_switch.c
+    - Additional header:
+        + O bit: indicate pkt send to onos
+        + Int len: length of the INT header + data (requirement for calculation pkt len)
+        + Original dest Port: store original port
+
+IntMon:
+    IntMon app will include 2 parts: IntMon service (provides interface to setup 5-tuples rule and get INT data, and IntMon app to provide web UI, send data to 
+    IntMon service and get INT data back to display)
+    ☐ Processing and control (App)
+        ✔ Populate all the tables in the switches @done (17-01-20 10:18)
+        ✔ Re-install flow rules when new host is added @done (17-01-20 10:18)
+        ✔ Modify ONOS P4 source code to control the mirroring process from IntMon @done (17-01-20 10:18)
+        ☐ Re-install flow rules when new switches is added
+            + Is it too costly?
+        ✔ Choose UDP flow to monitor @done (17-02-01 15:43)
+            ✔ monitor all UDP flows @done (17-01-20 10:21)
+            ✔ Monitor particular UDP flow @done (17-02-01 15:43)
+                + IP src Address
+                + IP dst Address
+                + UDP src and dst port
+                - Using 5 tuples
+                    - add Flowrules
+                        ✔ set source table @done (17-01-24 12:57)
+                        ✔ populated flow from UI interfaces @done (17-01-24 13:04)
+                        ✔ set sink table @done (17-02-01 15:43)
+                        ✔ set mirror to cpu table @done (17-02-01 15:43)
+        ✔ Choose fields to monitors @done (17-01-24 23:21)
+        ☐ Process INT data
+            ✔ Send INT data to onos with indication bit o @done (17-01-20 10:28)
+            ✔ Parser INT raw pkt to monitoring fields @done (17-01-24 21:10)
+            ☐ Process monitoring field to infomation (for example: path of the flow)
+
+
+    ☐ Display and UI (Web Interface)
+        UI includes 2 parts - main one for flow selection input and display info in text, and the other (topo overlay) for display int information in topology
+
+        ☐ Main control
+            ✔ Input for 5 tuples flow selection @done (17-01-24 13:01)
+            ✔ button to send flow selection to int services @done (17-01-24 13:02)
+            ✔ Input to choose fields to monitor @done (17-01-24 23:20)
+            ✔ show flowrules that are populated @done (17-02-01 15:43)
+            ✔ Delete flows @done (17-02-01 15:43)
+            ✔ table for showing statistic @done (17-02-01 15:43)
+        ☐ Display topology (hosts, switches and links)
+            ✔ Show topology with devices, hosts and links @done (17-01-24 13:01)
+            ☐ Show Link utilization on the links
+            ☐ Show hop delay
+            + display at the end-point of each link?
+            ☐ Show queue congestion status on the devices
+            + display at the end-point of each link?
+            ☐ Show 
+        ☐ Dropdown view to chose flow to monitor
+            ☐ All UDP flows
+            ☐ Particular flow 
+        ☐ Highlight the path of a flow and its information
+            + Only when choose particula 1 flow (for simplicy)
+            + Which fields will be display?
+        ☐ Box view to display the statistic information
+            + How to calculate the statistic infor?
+
+
+P4 INT switch:
+    P4 switch can be int source (the first switch in the path), transit (middle sw in the path),
+    or sink (last switch). However, it can be all of them (in the case the path has only 1 switch)
+    ✔ INT source @done (17-02-01 15:43)
+        ✔ Add INT header at first switch @high @done (17-01-20 10:09)
+        if the UDP des port is not the INT port, then this is the very first switch.
+        add INT header here, and change the port
+        ✔ Add INT instruction header @done (17-01-20 10:09)
+        ✔ Enable custom monitoring fields @done (17-01-20 10:09)
+
+        ✔ Enable or disable monitoring all UDP pkts @high @done (17-01-20 10:20)
+        ✔ Enable particular UDP pkt @done (17-02-01 15:43)
+
+    ✔ INT sink @done (17-01-20 10:30)
+        ✔ mirror pkt to cpu @done (17-01-20 10:11)
+        ✔ Truncated pkt len before send to onos @done (17-01-20 10:11)
+        ✔ restore original packet @done (17-01-20 10:29)
+            + remove INT header and data
+            + restore original port and len
+
+    ✔ INT transit @done (17-01-20 10:32)
+        ✔ add new INT data according to the INT instruction @done (17-01-20 10:32)
+
+Question:
+    - Change UDP port side-effects?
+        + to Destination target (DNS for example): no, because the port is restore
+        + to middle devices:
+            + No: if middle device does no go beyond UDP layer and does not consider UDP dst port
+            + Yes: otherwise
+
+Plan:
+    ☐ Simulation
+    Simulate between enable and disable monitor all UDP flows
+        + the increase in bandwidth
+        + the increase in CPU usages
+        + How many pkts ONOS can handle
+    ☐ Preprocessor
+
+IDEA:
+    Implement P4 things into ONOS
+    - One Sketch to Rule Them All: Rethinking Network Flow Monitoring with UnivMon
