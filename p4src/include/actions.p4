@@ -14,8 +14,8 @@ action send_to_cpu() {
     modify_field(standard_metadata.egress_spec, CPU_PORT);
 }
 
-action nop() {
-}
+// action nop() {
+// }
 
 table table0 {
     reads {
@@ -595,7 +595,7 @@ action int_sink() {
     // restore original dst port
     modify_field(i2e.origin_port, int_header.original_port);
     // remove all the INT information from the packet
-    // max 24 headers are supported
+    // max 64 headers are supported
     remove_header(int_header);
     remove_header(int_val[0]);
     remove_header(int_val[1]);
@@ -621,6 +621,46 @@ action int_sink() {
     remove_header(int_val[21]);
     remove_header(int_val[22]);
     remove_header(int_val[23]);
+    remove_header(int_val[24]);
+    remove_header(int_val[25]);
+    remove_header(int_val[26]);
+    remove_header(int_val[27]);
+    remove_header(int_val[28]);
+    remove_header(int_val[29]);
+    remove_header(int_val[30]);
+    remove_header(int_val[31]);
+    remove_header(int_val[32]);
+    remove_header(int_val[33]);
+    remove_header(int_val[34]);
+    remove_header(int_val[35]);
+    remove_header(int_val[36]);
+    remove_header(int_val[37]);
+    remove_header(int_val[38]);
+    remove_header(int_val[39]);
+    remove_header(int_val[40]);
+    remove_header(int_val[41]);
+    remove_header(int_val[42]);
+    remove_header(int_val[43]);
+    remove_header(int_val[44]);
+    remove_header(int_val[45]);
+    remove_header(int_val[46]);
+    remove_header(int_val[47]);
+    remove_header(int_val[48]);
+    remove_header(int_val[49]);
+    remove_header(int_val[50]);
+    remove_header(int_val[51]);
+    remove_header(int_val[52]);
+    remove_header(int_val[53]);
+    remove_header(int_val[54]);
+    remove_header(int_val[55]);
+    remove_header(int_val[56]);
+    remove_header(int_val[57]);
+    remove_header(int_val[58]);
+    remove_header(int_val[59]);
+    remove_header(int_val[61]);
+    remove_header(int_val[62]);
+    remove_header(int_val[63]);
+
     // remove int header
     subtract_from_field(ipv4.ipv4Len, int_header.int_len); 
     subtract_from_field(udp.udpLen, int_header.int_len);

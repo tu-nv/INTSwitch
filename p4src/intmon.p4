@@ -9,6 +9,7 @@ control ingress {
     process_port_counters();
 
     process_mirror_to_cpu();
+    process_set_first_sw();
     process_set_source_sink();
 }
 
@@ -16,8 +17,9 @@ control egress {
     // apply(mirror_execute); // test
 
     if (standard_metadata.ingress_port != CPU_PORT) {
-        if (ethernet.etherType == ETHERTYPE_IPV4) {
-            if (ipv4.protocol == IP_PROTOCOLS_UDP) {
+        // if (ethernet.etherType == ETHERTYPE_IPV4) {
+        //     if (ipv4.protocol == IP_PROTOCOLS_UDP) {
+        if (valid(udp)){
                 // 1: ingress cloned
                 if ((standard_metadata.egress_port != CPU_PORT) or (standard_metadata.instance_type == 1)) {
                     // int source
@@ -37,7 +39,7 @@ control egress {
                     
                 }
             }
-        }  
+        // }  
     } 
                 process_int_to_onos();
 }

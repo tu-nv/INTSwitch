@@ -111,13 +111,6 @@ SimpleSwitch::SimpleSwitch(int max_port, bool enable_swap)
   force_arith_field("intrinsic_metadata", "recirculate_flag");
 
   import_primitives();
-
-  // TU: init map
-  for (int i = 0; i < max_port; i++) {
-    last_time_map.insert(std::pair<int, clock::time_point>(i, clock::now()));
-    num_enq_pkts_map.insert(std::pair<int, int>(i, 0));
-    tx_utilization.insert(std::pair<int, int>(i, 0));
-  }
 }
 
 void
@@ -188,9 +181,46 @@ SimpleSwitch::force_swap() {
   }
 }
 
+// TU
+// void SimpleSwitch::reset_num_enq_pkts_map() {
+//   for (int i = 0; i < max_port; i++) {
+//     num_enq_pkts_map[i] = 0;
+//   }
+// }
+// TU
+void SimpleSwitch::timer_thread(){
+  // std::thread([this, interval, reset_num_enq_pkts_map]()
+  // {
+  //   while (true) {
+  //     reset_num_enq_pkts_map();                   
+  //     std::this_thread::sleep_for(
+  //     std::chrono::milliseconds(interval));
+  //   }
+  // }).detach();
+  while (true) {
+    boost::unique_lock<boost::mutex> lock(tx_mutex);
+    for (int i = 0; i < max_port; i++) {
+      tx_utilization[i] = (tx_bytes_in_period[i] >> 7) & 0x7FFFFFFF; // (10 - 3 + 2) byte to Kbit, 4s;
+      tx_bytes_in_period[i] = 0;
+    }                  
+    lock.unlock();
+
+    std::this_thread::sleep_for(
+    std::chrono::milliseconds(1000));
+  }
+}
+
 void
 SimpleSwitch::start_and_return() {
 
+  // TU: init map
+  for (int i = 0; i < max_port; i++) {
+    // last_time_map.insert(std::pair<int, clock::time_point>(i, clock::now()));
+    // num_enq_pkts_map.insert(std::pair<int, int>(i, 0));
+    tx_utilization.insert(std::pair<int, int>(i, 0));
+    tx_bytes_in_period.insert(std::pair<int, long>(i, 0));
+  }
+  
   struct timeval tv;
   gettimeofday(&tv, nullptr);
   process_instance_id = tv.tv_sec * 1000 + tv.tv_usec / 1000;
@@ -207,6 +237,9 @@ SimpleSwitch::start_and_return() {
   t3.detach();
   std::thread t4(&SimpleSwitch::hello_thread, this);
   t4.detach();
+  //TU
+  std::thread t5(&SimpleSwitch::timer_thread, this);
+  t5.detach();
 }
 
 void
@@ -226,7 +259,8 @@ SimpleSwitch::set_all_egress_queue_depths(const size_t depth_pkts) {
   for (int i = 0; i < max_port; i++) {
     set_egress_queue_depth(i, depth_pkts);
   }
-  capacity_all = depth_pkts;
+  // capacity_all = depth_pkts;
+  // capacity_log2 = (uint32_t) log2(capacity_all);
   return 0;
 }
 
@@ -535,17 +569,19 @@ SimpleSwitch::egress_thread(size_t worker_id) {
 
     phv = packet->get_phv();
 
-     // TU
-    clock::time_point time_now = clock::now();
-    // unit: microseconds
-    if (duration_cast<ts_res>(time_now - last_time_map[port]).count() > 1000000) {
-        tx_utilization[port] = num_enq_pkts_map[port];
-        num_enq_pkts_map[port] = 0;
-        last_time_map[port] = time_now;
-    } else {
-      // num_enq_pkts_map[port]++;
-      num_enq_pkts_map[port] += packet->get_data_size();
-    }
+
+    // //  // TU
+    // // clock::time_point time_now = clock::now();
+    // // // unit: microseconds
+    // // if (duration_cast<ts_res>(time_now - last_time_map[port]).count() > 1000000) {
+    // //     num_enq_pkts_map[port] = 0;
+    // //     last_time_map[port] = time_now;
+    // // } else {
+    // //   // num_enq_pkts_map[port]++;
+    // boost::unique_lock<boost::mutex> lock(tx_mutex);
+    // // tx_bytes_in_period[port] += packet->get_data_size();
+    // tx_bytes_in_period[port] += packet->get_ingress_length();
+    // lock.unlock();
 
 
     if (with_queueing_metadata) {
@@ -557,9 +593,9 @@ SimpleSwitch::egress_thread(size_t worker_id) {
           egress_buffers.size(port));
       // TU
       phv->get_field("queueing_metadata.deq_qcongestion").set(
-          egress_buffers.size(port) * 1000 / capacity_all);
+          (egress_buffers.size(port) << 4)); // 10 - log2 (64)
       phv->get_field("queueing_metadata.tx_utilization").set(
-          (tx_utilization[port] >> (10 - 3)) & 0x7FFFFFFF); // byte to Kbit
+          tx_utilization[port]); // (10 - 3 + 2) byte to Kbit, 4s
     }
 
     phv->get_field("standard_metadata.egress_port").set(port);
@@ -601,6 +637,11 @@ SimpleSwitch::egress_thread(size_t worker_id) {
     }
 
     deparser->deparse(packet.get());
+
+    boost::unique_lock<boost::mutex> lock(tx_mutex);
+    tx_bytes_in_period[port] += packet->get_data_size();
+    // tx_bytes_in_period[port] += packet->get_ingress_length();
+    lock.unlock();
 
     // RECIRCULATE
     if (phv->has_field("intrinsic_metadata.recirculate_flag")) {

@@ -26,7 +26,7 @@ Enviromental variables:
 ONOS mininet:
 	- sudo env ONOS_TAR=/tmp/onos-1.7.2.tu.tar.gz mn --custom onos.py --controller onos,1 --topo tree,2,2
 ONOS P4:
-	- sudo -E mn --custom $BMV2_PY --switch onosbmv2 --controller remote,ip=10.0.2.15,port=40123 --topo tree,2,2
+	- sudo -E mn --custom $BMV2_PY --switch onosbmv2 --controller remote,ip=141.223.83.37,port=40123 --topo tree,2,2
 ONOS P4 Mininet run:
 	- cd ~/onos/tools/dev/mininet
 	- Set ONOS TAR

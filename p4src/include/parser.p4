@@ -37,6 +37,12 @@ header tcp_t tcp;
 parser parse_tcp {
     extract(tcp);
     return ingress;
+    // return select(latest.srcPort) {
+    //     // bogus state also !!! (because the deparser is not in order)
+    //     0x0001 mask 0x0000: parse_udp;
+
+    //     default: ingress;
+    // }
 }
 
 // #define UDP_INT_PORT 54321
@@ -53,18 +59,7 @@ parser parse_udp {
     }
 }
 
-header int_header_t                             int_header;
-header int_switch_id_header_t                   int_switch_id_header;
-header int_ingress_port_id_header_t             int_ingress_port_id_header;
-header int_hop_latency_header_t                 int_hop_latency_header;
-header int_q_occupancy_header_t                 int_q_occupancy_header;
-header int_ingress_tstamp_header_t              int_ingress_tstamp_header;
-header int_egress_port_id_header_t              int_egress_port_id_header;
-header int_q_congestion_header_t                int_q_congestion_header;
-header int_egress_port_tx_utilization_header_t  int_egress_port_tx_utilization_header;
-
-metadata int_metadata_t int_metadata;
-
+header int_header_t int_header;
 parser parse_int_header {
     extract (int_header);
     // set_metadata(int_metadata.instruction_cnt, latest.ins_cnt);
@@ -79,13 +74,13 @@ parser parse_int_header {
         // in specification)
         0x000 mask 0xf00: parse_int_val;
         //// 0 mask 0: always true
-        // 0 mask 0: ingress;
+        0 mask 0: ingress;
         // never transition to the following state (1 mask 0 always false)
         1 mask 0: parse_all_int_meta_value_headers;
     }
 }
 
-#define MAX_INT_INFO 24
+#define MAX_INT_INFO 64
 header int_value_t int_val[MAX_INT_INFO];
 
 parser parse_int_val {
@@ -95,6 +90,15 @@ parser parse_int_val {
         default : ingress;
     }
 }
+
+header int_switch_id_header_t                   int_switch_id_header;
+header int_ingress_port_id_header_t             int_ingress_port_id_header;
+header int_hop_latency_header_t                 int_hop_latency_header;
+header int_q_occupancy_header_t                 int_q_occupancy_header;
+header int_ingress_tstamp_header_t              int_ingress_tstamp_header;
+header int_egress_port_id_header_t              int_egress_port_id_header;
+header int_q_congestion_header_t                int_q_congestion_header;
+header int_egress_port_tx_utilization_header_t  int_egress_port_tx_utilization_header;
 
 parser parse_all_int_meta_value_headers {
     // bogus state.. just extract all possible int headers in the
@@ -108,6 +112,7 @@ parser parse_all_int_meta_value_headers {
     extract(int_egress_port_id_header);
     extract(int_q_congestion_header);
     extract(int_egress_port_tx_utilization_header);
-    return ingress;
+    return parse_int_val;
+    // return ingress;
 }
 

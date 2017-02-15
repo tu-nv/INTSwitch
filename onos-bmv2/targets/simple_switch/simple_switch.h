@@ -32,6 +32,8 @@
 #include <chrono>
 #include <thread>
 #include <vector>
+#include <functional>
+#include <math.h>
 
 #ifdef P4THRIFT
 #include <p4thrift/protocol/TBinaryProtocol.h>
@@ -140,6 +142,7 @@ class SimpleSwitch : public Switch {
   void do_hello();
   void force_swap();
 
+
  private:
   static constexpr size_t nb_egress_threads = 4u;
 
@@ -169,6 +172,9 @@ class SimpleSwitch : public Switch {
   void egress_thread(size_t worker_id);
   void transmit_thread();
   void hello_thread();
+  // TU
+  // void reset_num_enq_pkts_map();
+  void timer_thread();
 
   int get_mirroring_mapping(mirror_id_t mirror_id) const {
     const auto it = mirroring_map.find(mirror_id);
@@ -203,10 +209,8 @@ class SimpleSwitch : public Switch {
   bool with_queueing_metadata{false};
 
   // TU
-  size_t capacity_all = 64; // default
-  std::map<int, clock::time_point> last_time_map;
-  std::map<int, int> num_enq_pkts_map;
-  std::map<int, long> tx_utilization;
+  std::map<int, long> tx_bytes_in_period;
+  std::map<int, int> tx_utilization;
 };
 
 #endif  // SIMPLE_SWITCH_SIMPLE_SWITCH_H_
