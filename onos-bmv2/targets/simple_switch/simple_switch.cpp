@@ -638,6 +638,8 @@ SimpleSwitch::egress_thread(size_t worker_id) {
 
     deparser->deparse(packet.get());
 
+    // TU
+    // it should be put here, see get_dat_size doc for reason
     boost::unique_lock<boost::mutex> lock(tx_mutex);
     tx_bytes_in_period[port] += packet->get_data_size();
     // tx_bytes_in_period[port] += packet->get_ingress_length();
