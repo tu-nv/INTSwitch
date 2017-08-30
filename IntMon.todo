@@ -35,7 +35,7 @@ IntMon:
         ☐ Re-install flow rules when new switches is added
             + Is it too costly?
         ✔ Choose UDP flow to monitor @done (17-02-01 15:43)
-            ✔ monitor all UDP flows @done (17-01-20 10:21)
+            ✔ monitor all UDP flows @done (17-08-21 09:10)
             ✔ Monitor particular UDP flow @done (17-02-01 15:43)
                 + IP src Address
                 + IP dst Address
@@ -122,3 +122,20 @@ Plan:
 IDEA:
     Implement P4 things into ONOS
     - One Sketch to Rule Them All: Rethinking Network Flow Monitoring with UnivMon
+
+%----------------------------------------------------------------------------------------------
+TODO NEXT
+INT for TCP:
+External Collector:
+Dynamic report:
+    Report when path change or some value is bigger than a threshold (2 kind)
+    + path change: all sw id are store in big array
+    + threshold: if any value is bigger than the threshold
+    + the kind and threshold value of report is set for each metadata type from ONOS
+
+        + for delay: store one value for each port of each switch
+        store the threshold in a register. the value is set using match/action table paremeter and copy to
+        this register
+        + for path: store path in a table????? 
+        ONOS do know the path, so we may not need to store the path?
+            + key: flow, value: path

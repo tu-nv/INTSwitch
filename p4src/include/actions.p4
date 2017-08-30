@@ -566,7 +566,7 @@ action int_source(max_hop, ins_cnt, ins_mask0003, ins_mask0407) {
 
     // add the header len (8 bytes) to total len
     add_to_field(ipv4.ipv4Len, 12);
-    add_to_field(udp.udpLen, 12);
+    // add_to_field(udp.udpLen, 12);
 
     add_header(int_header);
 
