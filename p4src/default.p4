@@ -25,7 +25,7 @@ control ingress {
 //                     // int source
 //                     process_int_source();
 
-//                     if(udp.dstPort == UDP_INT_PORT) {
+//                     if(udp.dstPort == INT_PORT) {
 //                     // if(valid(int_header)) {
 //                         // INT processing 
 //                         process_int_transit();

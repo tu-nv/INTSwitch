@@ -1,6 +1,7 @@
 // two metadata types supported by BMv2 simple switch
 // metadata intrinsic_metadata_t intrinsic_metadata;
 metadata queueing_metadata_t queueing_metadata;
+metadata int_metadata_i2e_t i2e;
 
 parser start {
     return parse_ethernet;
@@ -36,24 +37,26 @@ header tcp_t tcp;
 
 parser parse_tcp {
     extract(tcp);
-    return ingress;
-    // return select(latest.srcPort) {
-    //     // bogus state also !!! (because the deparser is not in order)
-    //     0x0001 mask 0x0000: parse_udp;
-
-    //     default: ingress;
-    // }
+    set_metadata(i2e.srcPort, latest.srcPort);
+    set_metadata(i2e.dstPort, latest.dstPort);
+    return select(latest.dstPort) {
+        INT_PORT: parse_int_header;
+        
+        default: ingress;
+    }
 }
 
-// #define UDP_INT_PORT 54321
+// #define INT_PORT 54321
 
 header udp_t udp;
 
 parser parse_udp {
     extract(udp);
+    set_metadata(i2e.srcPort, latest.srcPort);
+    set_metadata(i2e.dstPort, latest.dstPort);
     // return select(udp.udpLen) {
     return select(latest.dstPort) {
-        UDP_INT_PORT: parse_int_header;
+        INT_PORT: parse_int_header;
         
         default: ingress;
     }

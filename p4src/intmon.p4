@@ -19,13 +19,15 @@ control egress {
     if (standard_metadata.ingress_port != CPU_PORT) {
         // if (ethernet.etherType == ETHERTYPE_IPV4) {
         //     if (ipv4.protocol == IP_PROTOCOLS_UDP) {
-        if (valid(udp)){
+        if (valid(udp) or valid(tcp)){
                 // 1: ingress cloned
                 if ((standard_metadata.egress_port != CPU_PORT) or (standard_metadata.instance_type == 1)) {
                     // int source
-                    process_int_source();
+                    // if (valid(udp) or valid(tcp)) {
+                        process_int_source();
+                    // }
 
-                    if(udp.dstPort == UDP_INT_PORT) {
+                    if(udp.dstPort == INT_PORT or tcp.dstPort == INT_PORT) {
                         // INT processing 
                         process_int_transit();
                         // update underlay header based on INT information inserted 

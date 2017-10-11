@@ -1,4 +1,4 @@
-metadata int_metadata_i2e_t i2e;
+// metadata int_metadata_i2e_t i2e;
 metadata int_metadata_t int_metadata;
 
 action set_egress_port(port) {
@@ -368,6 +368,7 @@ control process_int_transit {
 
 action int_update_udp() {
     add_to_field(ipv4.ipv4Len, int_metadata.insert_byte_cnt);
+    // If the parent header instance of dest is not valid, the action has no effect
     add_to_field(udp.udpLen, int_metadata.insert_byte_cnt);
 }
 table tb_int_outer_encap {
@@ -434,8 +435,8 @@ table tb_set_source {
         i2e.first_sw: exact;
         ipv4.srcAddr: ternary;
         ipv4.dstAddr: ternary;
-        udp.srcPort: ternary;
-        udp.dstPort: ternary;
+        i2e.srcPort: ternary;
+        i2e.dstPort: ternary;
     }
     actions {
         int_set_source;
@@ -448,8 +449,8 @@ table tb_set_sink {
     reads {
         ipv4.dstAddr: ternary;
         ipv4.srcAddr: ternary;
-        udp.srcPort: ternary;
-        udp.dstPort: ternary;
+        i2e.srcPort: ternary;
+        i2e.dstPort: ternary;
     }
     actions {
         int_set_sink;
@@ -457,7 +458,7 @@ table tb_set_sink {
     max_size: 1024;
 }
 control process_set_source_sink {
-    if (valid (udp)) {
+    if (valid(udp) or valid(tcp)) {
         apply(tb_set_source);
         apply(tb_set_sink);
     }
@@ -551,8 +552,8 @@ table tb_int_source {
         i2e.source: exact;
         ipv4.srcAddr: ternary;
         ipv4.dstAddr: ternary;
-        udp.srcPort: ternary;
-        udp.dstPort: ternary;
+        i2e.srcPort: ternary;
+        i2e.dstPort: ternary;
     }
     actions {
         int_source; // sink = 0 & source = 1
@@ -566,7 +567,7 @@ action int_source(max_hop, ins_cnt, ins_mask0003, ins_mask0407) {
 
     // add the header len (8 bytes) to total len
     add_to_field(ipv4.ipv4Len, 12);
-    // add_to_field(udp.udpLen, 12);
+    add_to_field(udp.udpLen, 12);
 
     add_header(int_header);
 
@@ -586,8 +587,11 @@ action int_source(max_hop, ins_cnt, ins_mask0003, ins_mask0407) {
     modify_field(int_header.rsvd2, 0);
 
     modify_field(int_header.int_len, 12); //starting value as int header len //3
-    modify_field(int_header.original_port, udp.dstPort);
-    modify_field(udp.dstPort, UDP_INT_PORT);
+
+    // If the parent header instance of dest is not valid, the action has no effect
+    modify_field(int_header.original_port, i2e.dstPort);
+    modify_field(udp.dstPort, INT_PORT);    
+    modify_field(tcp.dstPort, INT_PORT);
 }
 
 //------------------------------Process int sink-------------------------------
@@ -682,6 +686,7 @@ control process_int_sink {
 //----------------------------restore original port----------------------------
 action restore_port () {
     modify_field(udp.dstPort, i2e.origin_port);
+    modify_field(tcp.dstPort, i2e.origin_port);
 }
 
 table tb_restore_port {
@@ -695,7 +700,7 @@ table tb_restore_port {
 }
 
 control process_restore_port {
-    // if (i2e.sink == 1) {
+    if (i2e.origin_port != 0) { // 0 means no INT
         apply (tb_restore_port);
-    // }
+    }
 }

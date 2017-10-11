@@ -88,7 +88,7 @@ header_type int_header_t {
         instruction_mask_1215   : 4;
         rsvd2                   : 16;
         int_len                 : 16;
-        original_port           : 16; // use rsvd2 to store original src/des port of udp/tcp
+        original_port           : 16;
         // rsvd2                   : 16;
     }
 }
@@ -169,6 +169,8 @@ header_type int_metadata_i2e_t {
         mirror_id: 8;
         first_sw: 1;
         flow_id: 16;
+        srcPort: 16;
+        dstPort: 16;
     }
 }
 
